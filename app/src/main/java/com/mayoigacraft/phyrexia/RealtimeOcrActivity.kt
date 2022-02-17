@@ -20,11 +20,9 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.mayoigacraft.phyrexia.databinding.ActivityRealtimeOcrBinding
-import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-typealias LumaListener = (luma: Double) -> Unit
 typealias OcrListener = (text: String) -> Unit
 
 class RealtimeOcrActivity : AppCompatActivity() {
@@ -49,7 +47,6 @@ class RealtimeOcrActivity : AppCompatActivity() {
         textRecognizer = TextRecognition.getClient(
             TextRecognizerOptions.DEFAULT_OPTIONS
         )
-
     }
 
     override fun onDestroy() {
@@ -150,37 +147,12 @@ class RealtimeOcrActivity : AppCompatActivity() {
     private fun onOcrSucceeded(text : String) {
         Log.e(APP_NAME, text)
     }
-    // View binding
+
     private lateinit var viewBinding: ActivityRealtimeOcrBinding
 
-    // Executor of camera
     private lateinit var cameraExecutor: ExecutorService
 
-    //
     private lateinit var textRecognizer: TextRecognizer
-
-    private class LuminosityAnalyzer(
-        private val listener: LumaListener
-    ) : ImageAnalysis.Analyzer {
-
-        private fun ByteBuffer.toByteArray(): ByteArray {
-            rewind()    // Rewind the buffer to zero
-            val data = ByteArray(remaining())
-            get(data)   // Copy the buffer into a byte array
-            return data // Return the byte array
-        }
-
-        override fun analyze(image: ImageProxy) {
-
-            val buffer = image.planes[0].buffer
-            val data = buffer.toByteArray()
-            val pixels = data.map { it.toInt() and 0xFF }
-            val luma = pixels.average()
-            listener(luma)
-
-            image.close()
-        }
-    }
 
     private class OcrAnalyzer(
         private val textRecognizer: TextRecognizer,
@@ -197,18 +169,13 @@ class RealtimeOcrActivity : AppCompatActivity() {
 
                 val result = textRecognizer.process(inputImage)
                     .addOnSuccessListener { visionText ->
-                        // Task completed successfully
-                        // ...
-
                         listener(visionText.text)
+                        imageProxy.close()
                     }
                     .addOnFailureListener { e ->
-                        // Task failed with an exception
-                        // ...
                         imageProxy.close()
                     }
             }
-            imageProxy.close()
         }
     }
 
