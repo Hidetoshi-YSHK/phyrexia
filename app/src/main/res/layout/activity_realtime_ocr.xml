@@ -11,4 +11,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <view class="com.mayoigacraft.phyrexia.RealtimeOcrActivity$OverlayDrawView"
+        android:id="@+id/overlay_draw_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
