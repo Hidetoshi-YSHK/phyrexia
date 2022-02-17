@@ -150,7 +150,6 @@ class RealtimeOcrActivity : AppCompatActivity() {
             val data = buffer.toByteArray()
             val pixels = data.map { it.toInt() and 0xFF }
             val luma = pixels.average()
-
             listener(luma)
 
             image.close()
