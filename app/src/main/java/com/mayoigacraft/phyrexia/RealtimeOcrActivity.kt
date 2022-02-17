@@ -1,6 +1,7 @@
 package com.mayoigacraft.phyrexia
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
@@ -14,12 +15,17 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.mayoigacraft.phyrexia.databinding.ActivityRealtimeOcrBinding
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 typealias LumaListener = (luma: Double) -> Unit
+typealias OcrListener = (text: String) -> Unit
 
 class RealtimeOcrActivity : AppCompatActivity() {
 
@@ -34,10 +40,16 @@ class RealtimeOcrActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(
                 this,
                 REQUIRED_PERMISSIONS,
-                REQUEST_CODE_PERMISSIONS)
+                REQUEST_CODE_PERMISSIONS
+            )
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        textRecognizer = TextRecognition.getClient(
+            TextRecognizerOptions.DEFAULT_OPTIONS
+        )
+
     }
 
     override fun onDestroy() {
@@ -48,15 +60,18 @@ class RealtimeOcrActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
-        grantResults: IntArray) {
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (isAllPermissionsGranted()) {
                 startCamera()
             } else {
-                Toast.makeText(this,
+                Toast.makeText(
+                    this,
                     "Permissions not granted by the user.",
-                    Toast.LENGTH_SHORT).show()
+                    Toast.LENGTH_SHORT
+                ).show()
                 finish()
             }
         }
@@ -66,7 +81,7 @@ class RealtimeOcrActivity : AppCompatActivity() {
         private const val APP_NAME = "Phyrexia"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS =
-            mutableListOf (
+            mutableListOf(
                 Manifest.permission.CAMERA
             ).apply {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
@@ -90,16 +105,19 @@ class RealtimeOcrActivity : AppCompatActivity() {
                 .build()
                 .also {
                     it.setSurfaceProvider(
-                        viewBinding.cameraPreview.surfaceProvider)
+                        viewBinding.cameraPreview.surfaceProvider
+                    )
                 }
 
             // Analyzer
             val imageAnalyzer = ImageAnalysis.Builder()
+                .setBackpressureStrategy(
+                    ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
-                    it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
-                        Log.d(APP_NAME, "Average luminosity: $luma")
-                    })
+                    it.setAnalyzer(
+                        cameraExecutor,
+                        OcrAnalyzer(textRecognizer, ::onOcrSucceeded))
                 }
 
             // Select back camera as a default
@@ -114,9 +132,10 @@ class RealtimeOcrActivity : AppCompatActivity() {
                     this,
                     cameraSelector,
                     preview,
-                    imageAnalyzer)
+                    imageAnalyzer
+                )
 
-            } catch(e: Exception) {
+            } catch (e: Exception) {
                 Log.e(APP_NAME, "Use case binding failed", e)
             }
 
@@ -128,14 +147,21 @@ class RealtimeOcrActivity : AppCompatActivity() {
         (permissionState == PackageManager.PERMISSION_GRANTED)
     }
 
+    private fun onOcrSucceeded(text : String) {
+        Log.e(APP_NAME, text)
+    }
     // View binding
     private lateinit var viewBinding: ActivityRealtimeOcrBinding
 
     // Executor of camera
     private lateinit var cameraExecutor: ExecutorService
 
+    //
+    private lateinit var textRecognizer: TextRecognizer
+
     private class LuminosityAnalyzer(
-        private val listener: LumaListener) : ImageAnalysis.Analyzer {
+        private val listener: LumaListener
+    ) : ImageAnalysis.Analyzer {
 
         private fun ByteBuffer.toByteArray(): ByteArray {
             rewind()    // Rewind the buffer to zero
@@ -155,4 +181,36 @@ class RealtimeOcrActivity : AppCompatActivity() {
             image.close()
         }
     }
+
+    private class OcrAnalyzer(
+        private val textRecognizer: TextRecognizer,
+        private val listener: OcrListener
+    ) : ImageAnalysis.Analyzer {
+
+        @SuppressLint("UnsafeOptInUsageError")
+        override fun analyze(imageProxy: ImageProxy) {
+            val image = imageProxy.image
+            if (image != null) {
+                val inputImage = InputImage.fromMediaImage(
+                    image,
+                    imageProxy.imageInfo.rotationDegrees)
+
+                val result = textRecognizer.process(inputImage)
+                    .addOnSuccessListener { visionText ->
+                        // Task completed successfully
+                        // ...
+
+                        listener(visionText.text)
+                    }
+                    .addOnFailureListener { e ->
+                        // Task failed with an exception
+                        // ...
+                        imageProxy.close()
+                    }
+            }
+            imageProxy.close()
+        }
+    }
+
+
 }
