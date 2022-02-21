@@ -14,6 +14,9 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * CameraX用の分析ユースケースクラス
+ */
 class OcrAnalyzer(
     private val context: Context,
     private val textRecognizer: TextRecognizer,

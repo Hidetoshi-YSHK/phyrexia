@@ -4,41 +4,34 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.*
 import android.hardware.camera2.CaptureRequest
 import android.os.Build
 import android.os.Bundle
-import android.util.AttributeSet
 import android.util.Log
 import android.util.Size
-import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.camera2.impl.Camera2ImplConfig
 import androidx.camera.camera2.internal.Camera2CameraControlImpl
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.mayoigacraft.phyrexia.databinding.ActivityRealtimeOcrBinding
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-
 typealias OcrListener = (textInfo: Text) -> Unit
 
+/**
+ * リアルタイムOCRアクティビティ
+ */
 class RealtimeOcrActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {

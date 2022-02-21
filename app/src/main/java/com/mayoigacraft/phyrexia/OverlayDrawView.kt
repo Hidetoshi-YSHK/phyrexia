@@ -7,6 +7,9 @@ import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
 
+/**
+ * カメラプレビューの上に配置する描画ビュー
+ */
 class OverlayDrawView(
     context: Context?,
     attributeSet: AttributeSet?
@@ -17,8 +20,7 @@ class OverlayDrawView(
     // 描画するラインの太さ
     private val lineStrokeWidth = 20f
 
-    init {
-    }
+    init {}
 
     override fun onDraw(canvas: Canvas) {
 
