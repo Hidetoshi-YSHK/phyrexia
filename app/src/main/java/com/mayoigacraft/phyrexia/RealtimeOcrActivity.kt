@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.hardware.camera2.CaptureRequest
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.util.Size
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -190,7 +189,7 @@ class RealtimeOcrActivity : AppCompatActivity() {
                 }
 
             } catch (e: Exception) {
-                Log.e(APP_NAME, "Use case binding failed", e)
+                logE(APP_NAME, "Use case binding failed", e)
             }
 
         }, ContextCompat.getMainExecutor(this))
@@ -202,7 +201,7 @@ class RealtimeOcrActivity : AppCompatActivity() {
     }
 
     private fun onOcrSucceeded(text: Text) {
-        Log.e(APP_NAME, text.text)
+        logE(APP_NAME, text.text)
     }
 
     private lateinit var context: Context

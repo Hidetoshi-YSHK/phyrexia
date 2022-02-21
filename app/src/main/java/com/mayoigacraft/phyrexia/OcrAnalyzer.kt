@@ -27,21 +27,21 @@ class OcrAnalyzer(
     override fun analyze(imageProxy: ImageProxy) {
         val image = imageProxy.image
         if (image == null) {
-            Log.e(AppConst.APP_NAME, "image is null")
+            logE(AppConst.APP_NAME, "image is null")
             return
         }
 
         if (image.format != ImageFormat.YUV_420_888) {
-            Log.e(AppConst.APP_NAME, "image.format is not YUV_420_888")
+            logE(AppConst.APP_NAME, "image.format is not YUV_420_888")
             return
         }
 
         val dir = context.getExternalFilesDir(null)
         if (dir == null) {
-            Log.e(AppConst.APP_NAME, "dir is null")
+            logE(AppConst.APP_NAME, "dir is null")
         }
         else {
-            Log.e(AppConst.APP_NAME, dir.absolutePath)
+            logE(AppConst.APP_NAME, dir.absolutePath)
             val filename =
                 SimpleDateFormat(AppConst.DATE_FORMAT, Locale.JAPAN)
                     .format(System.currentTimeMillis()) +
@@ -51,7 +51,7 @@ class OcrAnalyzer(
                 image,
                 imageProxy.imageInfo.rotationDegrees)
             if (bitmap == null) {
-                Log.e(AppConst.APP_NAME, "bitmap is null")
+                logE(AppConst.APP_NAME, "bitmap is null")
             }
             else {
                 val outputStream = ByteArrayOutputStream()
@@ -74,7 +74,7 @@ class OcrAnalyzer(
                 imageProxy.close()
             }
             .addOnFailureListener { e ->
-                Log.e(AppConst.APP_NAME, "Text recognition failed", e)
+                logE(AppConst.APP_NAME, "Text recognition failed", e)
                 imageProxy.close()
             }
     }
