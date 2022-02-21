@@ -26,13 +26,42 @@ import com.mayoigacraft.phyrexia.databinding.ActivityRealtimeOcrBinding
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-typealias OcrListener = (textInfo: Text) -> Unit
 
 /**
  * リアルタイムOCRアクティビティ
  */
 class RealtimeOcrActivity : AppCompatActivity() {
+    /**
+     * 定数
+     */
+    companion object {
+        /**
+         * 権限要求のリクエストコード
+         */
+        private const val REQUEST_CODE_PERMISSIONS = 10
 
+        /**
+         * 要求する権限
+         */
+        private val REQUIRED_PERMISSIONS =
+            mutableListOf(
+                Manifest.permission.CAMERA
+            ).apply {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }.toTypedArray()
+
+        /**
+         * 設定用非公開APIを使用するか
+         */
+        private const val USE_HIDDEN_CONFIG_API = false
+    }
+
+    /**
+     * 初期化処理
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         context = this
@@ -40,8 +69,10 @@ class RealtimeOcrActivity : AppCompatActivity() {
         setContentView(viewBinding.root)
 
         if (isAllPermissionsGranted()) {
+            // 権限が付与済みならカメラを起動する
             startCamera()
         } else {
+            // 権限を要求
             ActivityCompat.requestPermissions(
                 this,
                 REQUIRED_PERMISSIONS,
@@ -56,11 +87,17 @@ class RealtimeOcrActivity : AppCompatActivity() {
         )
     }
 
+    /**
+     * 終了処理
+     */
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
     }
 
+    /**
+     * 権限要求結果のコールバック
+     */
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -69,8 +106,10 @@ class RealtimeOcrActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (isAllPermissionsGranted()) {
+                // 権限が付与されたらカメラを起動する
                 startCamera()
             } else {
+                // 権限が付与されなかったらアクティビティを終了する
                 Toast.makeText(
                     this,
                     "Permissions not granted by the user.",
@@ -81,74 +120,21 @@ class RealtimeOcrActivity : AppCompatActivity() {
         }
     }
 
-    companion object {
-        private const val APP_NAME = "Phyrexia"
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private const val USE_HIDDEN_CONFIG_API = false
-        private const val DATE_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private const val IMAGE_EXTENSION = ".jpg"
-
-        private val REQUIRED_PERMISSIONS =
-            mutableListOf(
-                Manifest.permission.CAMERA
-            ).apply {
-                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-                    add(Manifest.permission.READ_EXTERNAL_STORAGE)
-                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                }
-            }.toTypedArray()
-
-    }
-
+    /**
+     * カメラの処理を開始する
+     */
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError")
     private fun startCamera() {
-        val cameraProviderFuture =
+        val processCameraProvider =
             ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider =
-                cameraProviderFuture.get()
-
-
+        processCameraProvider.addListener({
             // Cameraの細かい設定を非公開APIで設定する
-            val configBuilder = Camera2ImplConfig.Builder()
+            var configBuilder : Camera2ImplConfig.Builder? = null
             if (USE_HIDDEN_CONFIG_API) {
-                configBuilder.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_MODE,
-                    CaptureRequest.CONTROL_MODE_AUTO
-                )
-                configBuilder.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AE_MODE,
-                    CaptureRequest.CONTROL_AE_MODE_ON
-                )
-                configBuilder.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_AUTO
-                )
-                configBuilder.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AWB_MODE,
-                    CaptureRequest.CONTROL_AWB_MODE_AUTO
-                )
-                configBuilder.setCaptureRequestOption(
-                    CaptureRequest.FLASH_MODE,
-                    CaptureRequest.FLASH_MODE_OFF
-                )
-                configBuilder.setCaptureRequestOption(
-                    CaptureRequest.SENSOR_SENSITIVITY,
-                    100
-                )
-                configBuilder.setCaptureRequestOption(
-                    CaptureRequest.SENSOR_FRAME_DURATION,
-                    16666666
-                )
-                configBuilder.setCaptureRequestOption(
-                    CaptureRequest.SENSOR_EXPOSURE_TIME,
-                    20400000
-                )
+                configBuilder = setupHiddenConfigApi()
             }
 
-            // Preview use case
+            // プレビューユースケース
             val preview = Preview.Builder()
                 .build()
                 .also {
@@ -157,7 +143,7 @@ class RealtimeOcrActivity : AppCompatActivity() {
                     )
                 }
 
-            // Analyzer use case
+            // 分析ユースケース
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(
                     ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
@@ -172,10 +158,13 @@ class RealtimeOcrActivity : AppCompatActivity() {
                 }
 
             try {
-                // Unbind use cases before rebinding
+                val cameraProvider: ProcessCameraProvider =
+                    processCameraProvider.get()
+
+                // ユースケースをバインド解除
                 cameraProvider.unbindAll()
 
-                // Bind use cases to camera
+                // ユースケースをバインドする
                 val camera = cameraProvider.bindToLifecycle(
                     this,
                     CameraSelector.DEFAULT_BACK_CAMERA,
@@ -183,35 +172,92 @@ class RealtimeOcrActivity : AppCompatActivity() {
                     imageAnalyzer
                 )
 
-                if (USE_HIDDEN_CONFIG_API) {
+                // 非公開APIでの設定を有効化する
+                if (USE_HIDDEN_CONFIG_API && (configBuilder != null)) {
                     (camera.cameraControl as Camera2CameraControlImpl)
                         .addInteropConfig(configBuilder.build())
                 }
-
             } catch (e: Exception) {
-                logE(APP_NAME, "Use case binding failed", e)
+                logE(AppConst.APP_NAME, "Use case binding failed", e)
             }
 
         }, ContextCompat.getMainExecutor(this))
     }
 
+    /**
+     * 要求権限がすべて付与されているかの判定
+     */
     private fun isAllPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         val permissionState = ContextCompat.checkSelfPermission(baseContext, it)
         (permissionState == PackageManager.PERMISSION_GRANTED)
     }
 
+    /**
+     * テキスト認識に成功した場合の処理
+     */
     private fun onOcrSucceeded(text: Text) {
-        logE(APP_NAME, text.text)
+        logE(AppConst.APP_NAME, text.text)
     }
 
+    /**
+     * 非公開APIでの設定を行う
+     */
+    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError")
+    private fun setupHiddenConfigApi() : Camera2ImplConfig.Builder {
+        val configBuilder = Camera2ImplConfig.Builder()
+        configBuilder.setCaptureRequestOption(
+            CaptureRequest.CONTROL_MODE,
+            CaptureRequest.CONTROL_MODE_AUTO
+        )
+        configBuilder.setCaptureRequestOption(
+            CaptureRequest.CONTROL_AE_MODE,
+            CaptureRequest.CONTROL_AE_MODE_ON
+        )
+        configBuilder.setCaptureRequestOption(
+            CaptureRequest.CONTROL_AF_MODE,
+            CaptureRequest.CONTROL_AF_MODE_AUTO
+        )
+        configBuilder.setCaptureRequestOption(
+            CaptureRequest.CONTROL_AWB_MODE,
+            CaptureRequest.CONTROL_AWB_MODE_AUTO
+        )
+        configBuilder.setCaptureRequestOption(
+            CaptureRequest.FLASH_MODE,
+            CaptureRequest.FLASH_MODE_OFF
+        )
+        configBuilder.setCaptureRequestOption(
+            CaptureRequest.SENSOR_SENSITIVITY,
+            100
+        )
+        configBuilder.setCaptureRequestOption(
+            CaptureRequest.SENSOR_FRAME_DURATION,
+            16666666
+        )
+        configBuilder.setCaptureRequestOption(
+            CaptureRequest.SENSOR_EXPOSURE_TIME,
+            20400000
+        )
+        return configBuilder
+    }
+
+    /**
+     * アクティビティコンテキスト
+     */
     private lateinit var context: Context
 
+    /**
+     * ビューバインディング
+     */
     private lateinit var viewBinding: ActivityRealtimeOcrBinding
 
+    /**
+     * カメラ処理スレッド
+     */
     private lateinit var cameraExecutor: ExecutorService
 
+    /**
+     * テキスト認識機
+     */
     private lateinit var textRecognizer: TextRecognizer
-
-
 
 }
