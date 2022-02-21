@@ -14,7 +14,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-private class OcrAnalyzer(
+class OcrAnalyzer(
     private val context: Context,
     private val textRecognizer: TextRecognizer,
     private val listener: OcrListener
@@ -24,30 +24,31 @@ private class OcrAnalyzer(
     override fun analyze(imageProxy: ImageProxy) {
         val image = imageProxy.image
         if (image == null) {
-            Log.e(RealtimeOcrActivity.APP_NAME, "image is null")
+            Log.e(AppConst.APP_NAME, "image is null")
             return
         }
 
         if (image.format != ImageFormat.YUV_420_888) {
-            Log.e(RealtimeOcrActivity.APP_NAME, "image.format is not YUV_420_888")
+            Log.e(AppConst.APP_NAME, "image.format is not YUV_420_888")
             return
         }
 
         val dir = context.getExternalFilesDir(null)
         if (dir == null) {
-            Log.e(RealtimeOcrActivity.APP_NAME, "dir is null")
+            Log.e(AppConst.APP_NAME, "dir is null")
         }
         else {
-            Log.e(RealtimeOcrActivity.APP_NAME, dir.absolutePath)
+            Log.e(AppConst.APP_NAME, dir.absolutePath)
             val filename =
-                SimpleDateFormat(RealtimeOcrActivity.DATE_FORMAT, Locale.JAPAN)
-                    .format(System.currentTimeMillis()) + RealtimeOcrActivity.IMAGE_EXTENSION
+                SimpleDateFormat(AppConst.DATE_FORMAT, Locale.JAPAN)
+                    .format(System.currentTimeMillis()) +
+                        AppConst.IMAGE_EXTENSION
             val file = File(dir, filename)
             val bitmap = convertImageToBitmap(
                 image,
                 imageProxy.imageInfo.rotationDegrees)
             if (bitmap == null) {
-                Log.e(RealtimeOcrActivity.APP_NAME, "bitmap is null")
+                Log.e(AppConst.APP_NAME, "bitmap is null")
             }
             else {
                 val outputStream = ByteArrayOutputStream()
@@ -70,7 +71,7 @@ private class OcrAnalyzer(
                 imageProxy.close()
             }
             .addOnFailureListener { e ->
-                Log.e(RealtimeOcrActivity.APP_NAME, "Text recognition failed", e)
+                Log.e(AppConst.APP_NAME, "Text recognition failed", e)
                 imageProxy.close()
             }
     }
