@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.hardware.camera2.CaptureRequest
-import android.media.Image
 import android.os.Build
 import android.os.Bundle
 import android.util.AttributeSet
@@ -32,12 +31,10 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.mayoigacraft.phyrexia.databinding.ActivityRealtimeOcrBinding
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.nio.ReadOnlyBufferException
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.experimental.inv
 
 
 typealias OcrListener = (textInfo: Text) -> Unit
