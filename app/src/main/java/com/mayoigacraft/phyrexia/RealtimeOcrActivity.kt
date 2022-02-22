@@ -4,6 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.ImageFormat
 import android.hardware.camera2.CaptureRequest
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +16,7 @@ import androidx.camera.camera2.impl.Camera2ImplConfig
 import androidx.camera.camera2.internal.Camera2CameraControlImpl
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
@@ -23,6 +26,10 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.mayoigacraft.phyrexia.databinding.ActivityRealtimeOcrBinding
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -195,8 +202,9 @@ class RealtimeOcrActivity : AppCompatActivity() {
     /**
      * テキスト認識に成功した場合の処理
      */
-    private fun onOcrSucceeded(text: Text) {
-        logE(AppConst.APP_NAME, text.text)
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun onOcrSucceeded(imageProxy: ImageProxy, text: Text) {
+        saveToFile(imageProxy)
     }
 
     /**
@@ -238,6 +246,50 @@ class RealtimeOcrActivity : AppCompatActivity() {
             20400000
         )
         return configBuilder
+    }
+
+    /**
+     * 画像をファイルに保存する
+     */
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun saveToFile(imageProxy: ImageProxy) {
+        val image = imageProxy.image
+        if (image == null) {
+            logE(AppConst.APP_NAME, "image is null")
+            return
+        }
+        else if (image.format != ImageFormat.YUV_420_888) {
+            logE(AppConst.APP_NAME, "image.format is not YUV_420_888")
+            return
+        }
+
+        val bitmap = convertImageToBitmap(
+            image,
+            imageProxy.imageInfo.rotationDegrees)
+        if (bitmap == null) {
+            logE(AppConst.APP_NAME, "convertImageToBitmap failed")
+            return
+        }
+
+        val dir = context.getExternalFilesDir(null)
+        if (dir == null) {
+            logE(AppConst.APP_NAME, "getExternalFileDir failed")
+            return
+        }
+
+        val filename =
+            SimpleDateFormat(AppConst.DATE_FORMAT, Locale.JAPAN)
+                .format(System.currentTimeMillis()) +
+                    AppConst.JPEG_EXTENSION
+        val file = File(dir, filename)
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(
+            Bitmap.CompressFormat.JPEG,
+            AppConst.JPEG_QUALITY_FILE_OUTPUT,
+            outputStream)
+        file.writeBytes(outputStream.toByteArray())
+
+        logI(AppConst.APP_NAME, file.absolutePath)
     }
 
     /**

@@ -54,7 +54,7 @@ private fun imageToJpegBytes(image: Image): ByteArray? {
     val out = ByteArrayOutputStream()
     yuvImage.compressToJpeg(
         Rect(0, 0, yuvImage.width, yuvImage.height),
-        85,
+        AppConst.JPEG_QUALITY_CONVERSION,
         out
     )
     return out.toByteArray()
