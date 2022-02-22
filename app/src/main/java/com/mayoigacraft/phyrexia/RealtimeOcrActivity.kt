@@ -3,6 +3,7 @@ package com.mayoigacraft.phyrexia
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageFormat
@@ -10,6 +11,9 @@ import android.hardware.camera2.CaptureRequest
 import android.os.Build
 import android.os.Bundle
 import android.util.Size
+import android.view.View
+import android.view.Window
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.camera2.impl.Camera2ImplConfig
@@ -21,7 +25,6 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -71,9 +74,23 @@ class RealtimeOcrActivity : AppCompatActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
         context = this
         viewBinding = ActivityRealtimeOcrBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
+
+        // タイトルバーを消す
+        supportActionBar?.hide()
+
+        // ステータスバーを隠す
+        // ナビゲーションバーを隠す
+        // 時間経過で再度ナビゲーションバーを隠す
+        val view = window.decorView
+        view.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_FULLSCREEN or
+            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
 
         if (isAllPermissionsGranted()) {
             // 権限が付与済みならカメラを起動する
@@ -125,6 +142,13 @@ class RealtimeOcrActivity : AppCompatActivity() {
                 finish()
             }
         }
+    }
+
+    /**
+     * 戻るボタン押下イベント
+     */
+    fun onBackButtonClicked(view: View) {
+        finish()
     }
 
     /**
@@ -203,7 +227,13 @@ class RealtimeOcrActivity : AppCompatActivity() {
      * テキスト認識に成功した場合の処理
      */
     @SuppressLint("UnsafeOptInUsageError")
-    private fun onOcrSucceeded(imageProxy: ImageProxy, text: Text) {
+    private fun onOcrSucceeded(
+        imageProxy: ImageProxy,
+        textBlocks: List<TextBlock>) {
+        // 描画ビューに認識結果をセット
+        viewBinding.overlayDrawView.setTextBlocks(textBlocks)
+        viewBinding.overlayDrawView.invalidate()
+        // 画像をファイルに保存
         saveToFile(imageProxy)
     }
 
